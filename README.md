@@ -1,6 +1,6 @@
 # Schedule the moments an order cannot miss
 
-The working path starts in `src/reminder_service.ts`: an order arrives, four dated reminders are registered, and each fired callback becomes a queue message for the delivery worker. Infrai keeps cron and queue behind one API key, so the handoff does not require separate scheduler and messaging credentials.
+The flow starts in `src/reminder_service.ts`: an order comes in, four dated reminders get registered, and each callback that fires turns into a queue message for the delivery worker. Infrai keeps cron and queue under one API key, so you can wire the whole path with one key and one bill instead of juggling separate scheduler and messaging credentials.
 
 ```ts
 const result = await infrai.cron.create(
@@ -11,7 +11,7 @@ const result = await infrai.cron.create(
 
 ## Run the order path
 
-Use Node 22 or later, then install dependencies and expose the local HTTP service through the public HTTPS URL you use for development.
+Use Node 22 or newer, install dependencies, then expose your local HTTP service through the public HTTPS URL you use during development.
 
 ```bash
 npm install
@@ -20,7 +20,7 @@ set -a && source .env && set +a
 npm run dev
 ```
 
-Submit a concrete order from another terminal:
+From another terminal, submit a real order:
 
 ```bash
 curl -X POST http://localhost:3000/orders/reminders \
@@ -35,26 +35,26 @@ curl -X POST http://localhost:3000/orders/reminders \
   }'
 ```
 
-The response contains four reminder records with `kind`, `jobId`, and `dueAt`. When a deadline fires, Infrai posts to `/callbacks/reminder`; that route validates the callback and publishes an `order.deadline` payload. Run `npm run worker` to consume those payloads, print the chosen delivery lane, and acknowledge each handled message.
+The response includes four reminder records with `kind`, `jobId`, and `dueAt`. When a deadline fires, Infrai posts to `/callbacks/reminder`; that route verifies the callback and publishes an `order.deadline` payload. Run `npm run worker` to consume those payloads, print the selected delivery lane, and acknowledge each message after it is handled.
 
 ## The editorial timeline inside an order
 
-This example treats commerce updates like a publishing calendar. Checkout prompts and receipts face the customer, fulfillment deadlines go to the operations desk, and the later order update returns to the customer channel. `planDeadlines()` sorts that sequence before any schedule is created, which makes the content decision inspectable and testable.
+This example treats commerce updates like an editorial calendar. Checkout prompts and receipts go to the customer, fulfillment deadlines land with operations, and the later order update returns to the customer channel. `planDeadlines()` orders that sequence before any schedule is created, so the decision stays easy to inspect and easy to test.
 
-The one real gotcha is time: incoming dates include an offset, while cron fields are generated in UTC. Keep `PUBLIC_BASE_URL` pointed at a reachable HTTPS origin because scheduled tasks call that origin after the request that created them has ended.
+The one real gotcha is time. Incoming dates carry an offset, while cron fields are produced in UTC. Keep `PUBLIC_BASE_URL` pointed at a reachable HTTPS origin, because scheduled tasks call back to that origin after the request that created them is long gone.
 
-Every write carries an idempotency key derived from the order, reminder kind, and date. The client decodes the `{ok, data, error, metadata}` body before considering status, preserves ordinary 4xx rejections for the route caller, and backs off on HTTP 429.
+Each write carries an idempotency key derived from the order, reminder kind, and date. The client decodes the `{ok, data, error, metadata}` body before it trusts status, preserves normal 4xx rejections for the route caller, and backs off on HTTP 429.
 
 ## Verify the business decision
 
-The focused test feeds `order-1042` four deliberately unordered dates. It expects checkout first, receipt second, the customer update third, and fulfillment last with `audience: "operations"`.
+The focused test feeds `order-1042` four intentionally unordered dates. It expects checkout first, receipt second, the customer update third, and fulfillment last with `audience: "operations"`.
 
 ```bash
 npm test
 npm run typecheck
 ```
 
-The sample stops at printing the selected delivery lane. Replace that print with the content renderer or notification adapter already used by your application.
+The sample ends by printing the selected delivery lane. In a real app, swap that print for the content renderer or notification adapter you already use.
 
 ## License
 
@@ -62,7 +62,7 @@ MIT
 
 ## Before this ships: Commerce Deadline Reminder Service Reminder Ecommerce Typesc
 
-The example above is intentionally minimal. A few things to wire up for real use: The details below apply to Commerce Deadline Reminder Service Reminder Ecommerce Typesc.
+The example above stays intentionally small. A few pieces still need wiring before real use. The notes below apply to Commerce Deadline Reminder Service Reminder Ecommerce Typesc.
 
 **Account & key**
 
@@ -70,4 +70,4 @@ The example above is intentionally minimal. A few things to wire up for real use
 
 **Commerce Deadline Reminder Service Reminder Ecommerce Typesc: Scheduled / background work**
 - **Commerce Deadline Reminder Service Reminder Ecommerce Typesc:** Server-side jobs keep running and **consuming credit** — monitor `GET /v1/account/usage` and set an auto-recharge threshold.
-- **Commerce Deadline Reminder Service Reminder Ecommerce Typesc:** Make handlers idempotent and use the queue's ack/retry so a redelivery doesn't double-process.
+- **Commerce Deadline Reminder Service Reminder Ecommerce Typesc:** Make handlers idempotent and use the queue's ack/retry so a redelivery does not process the same work twice.
